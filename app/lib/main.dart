@@ -1,10 +1,12 @@
 // SPIKE fase 0(a): ¿suena la alarma en un celular real (pantalla completa,
 // en silencio, con la app cerrada, tras reiniciar)? Se reemplaza en la fase 1.
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:alarm/alarm.dart';
 import 'package:alarm/utils/alarm_set.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 const _alarmId = 1;
@@ -49,6 +51,7 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
   bool _sonando = false;
   Map<String, bool> _salud = {};
   DateTime? _proxima;
+  String _sesion = 'Sin sesión';
 
   @override
   void initState() {
@@ -100,6 +103,33 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
     await _refrescar();
   }
 
+  // SPIKE fase 0(c): login del gestor con Authentik (OIDC + PKCE, cliente público).
+  Future<void> _iniciarSesion() async {
+    String sesion;
+    try {
+      final r = await const FlutterAppAuth().authorizeAndExchangeCode(
+        AuthorizationTokenRequest(
+          'recuerdame-app',
+          'xyz.danihami.recuerdame:/oauth',
+          discoveryUrl:
+              'https://auth.danihami.xyz/application/o/recuerdame/.well-known/openid-configuration',
+          scopes: ['openid', 'profile', 'email', 'offline_access'],
+        ),
+      );
+      // Solo para mostrar quién entró; la firma del token la valida el servidor.
+      final datos =
+          jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(r.idToken!.split('.')[1]))))
+              as Map<String, dynamic>;
+      sesion =
+          'Sesión: ${datos['preferred_username']} (${datos['name']})\n'
+          'sub: ${(datos['sub'] as String).substring(0, 12)}…\n'
+          'Token de renovación: ${r.refreshToken == null ? 'NO' : 'sí'}';
+    } catch (e) {
+      sesion = 'Login falló: $e';
+    }
+    if (mounted) setState(() => _sesion = sesion);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_sonando) {
@@ -138,6 +168,10 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
             _proxima == null ? 'Sin alarma programada' : 'Programada: $_proxima',
             textAlign: TextAlign.center,
           ),
+          const Divider(height: 48),
+          FilledButton(onPressed: _iniciarSesion, child: const Text('Iniciar sesión (gestor)')),
+          const SizedBox(height: 16),
+          Text(_sesion, textAlign: TextAlign.center),
         ],
       ),
     );
