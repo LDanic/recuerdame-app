@@ -1,6 +1,6 @@
 # Recuérdame — Plan v1
 
-> Estado: **planeación aprobada en sesión del 2026-11-14**. Aún no hay código.
+> Estado: planeación aprobada el 2026-11-14. **Fases 1 y 2 construidas y desplegadas el 2026-11-15** (falta probarlas en los celulares). Contrato: `docs/api.md`; despliegue: `docs/despliegue.md`.
 > Este documento es la fuente de verdad del alcance. Si algo cambia, se cambia aquí primero.
 
 ## 1. Qué es
@@ -33,8 +33,8 @@ infraestructura que el servidor y los celulares.
 | Privacidad | Estándar fuerte (ver §10). El servidor sí lee el contenido |
 | Voz desde texto | La genera el servidor (Piper TTS, local) con la voz **Laura suave** (`es_MX-laura-high`, `length_scale=1.1`, `noise_scale=0.5`, `noise_w_scale=0.6`; elegida el 2026-11-14). **Se borra del servidor cuando todos los celulares destino confirman la descarga**; se regenera desde el texto si hace falta |
 | Audio grabado | Se conserva cifrado en el servidor mientras exista el recordatorio; se borra al eliminarlo |
-| Botones de la alarma | **Entendido** (grande) + **Más tarde** (10 min) + **Escuchar otra vez** |
-| Sin confirmación | Repite (p. ej. cada 5 min, hasta 3 veces) y luego avisa a todos los gestores |
+| Botones de la alarma | **Entendido** (grande) + **Más tarde**. Pantalla **nativa** (no Flutter, decidido el 2026-11-15 tras un bloqueo en el Samsung al reiniciar): abre al instante aunque el celular esté lento. Las **teclas de volumen** = Más tarde. "Más tarde" calla ese intento y suena la siguiente repetición. Cada timbre dura **1 min y se calla solo**: nunca queda sonando sin forma de apagarlo. La voz se repite durante ese minuto, así que no hace falta "Escuchar otra vez" en la alarma (el 🔊 está en la lista de hoy) |
+| Sin confirmación | Repite (por defecto cada 10 min, 3 veces; máx. 7) y luego avisa a todos los gestores |
 | Silencio / No molestar | Según el nivel de alerta: **Alarma** (suena en silencio, pantalla completa), **Notificación** (respeta el silencio), **Discreto** (solo aparece en la lista) |
 | Pantalla completa o banner | **Configurable en Ajustes, por nivel de alerta** (decidido el 2026-11-14): cada nivel se abre en pantalla completa o solo como banner cuando el celular está en uso. Por defecto: Alarma = pantalla completa, Notificación = banner. El ajuste es por persona y lo fija su gestor |
 | Push | **No.** Sincronización periódica (ver §5) |
@@ -45,6 +45,7 @@ infraestructura que el servidor y los celulares.
 | Marcas a soportar | Xiaomi/Redmi/POCO, Samsung, Motorola |
 | Nombre | **Recuérdame**: `recuerdame.danihami.xyz`, paquete `xyz.danihami.recuerdame` |
 | Primera meta | Fase 1: el usuario solo, con 2 celulares. Fase 2: sus papás. Luego, hogar y otros gestores |
+| Gestores | `milo` y `dani` (lista fija en el servidor, `RECUERDAME_GESTORES`), decidido el 2026-11-15 |
 | Sincronización del receptor | Cada 15 min, y además al abrir la app, al encender el celular y al recuperar la red |
 | Historial de confirmaciones | 1 año, luego se purga solo |
 
@@ -90,19 +91,23 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
 | `audit_log` | quién, qué, cuándo | Cambios de gestores |
 | `meta` | contador global de versión | Para la sincronización incremental |
 
+**Implementado el 2026-11-15** (más simple que lo conceptual): un solo campo `text` (se muestra y se dice); sin `buttons`, `snooze_min`, `tz` ni `meta` (la hora es local del celular del receptor y la sincronización es por foto completa). Los grupos llegan en la fase 3 con una columna `target_group_id`; hoy el destinatario es una persona.
+
 ## 5. Sincronización (sin push)
 
-- **Incremental por cursor:** `GET /v1/sync?since=N` devuelve solo lo que cambió y lo que el llamante
-  tiene permiso de ver. Las escrituras son PUT idempotentes con UUID del cliente. Si alguien edita sobre
-  una versión vieja, recibe `409 CONFLICT` (dos gestores editando lo mismo).
+- **Foto completa:** `POST /v1/sync` recibe la bandeja de salida y devuelve todo lo que el llamante
+  puede ver (con una familia son pocos KB; el cursor incremental queda para cuando pese). Las escrituras
+  son PUT idempotentes con UUID del cliente. Si alguien edita sobre una versión vieja, recibe
+  `409 CONFLICT` (dos gestores editando lo mismo).
 - **Receptor offline-first:** confirmaciones, posposiciones y salud van a una *outbox* local y se envían
   en cuanto haya red. Al tocar "Entendido" se intenta enviar de inmediato.
 - **Gestor online para editar** en la v1 (simplifica conflictos); sus propias confirmaciones como receptor
   sí son offline-first.
 - **Disparadores:** WorkManager cada 15 min, al abrir la app, al encender el celular y al volver la red.
-- **Aviso "no confirmó" sin push:** el celular del gestor conoce los horarios de sus receptores y programa
-  una **alarma de verificación** para *hora + repeticiones + margen*. A esa hora le pregunta al servidor;
-  si no hay confirmación, muestra una notificación local. Distingue entre **"no confirmó"** y
+- **Aviso "no confirmó" sin push:** el celular del gestor conoce los horarios de sus receptores y, en cada
+  sincronización, revisa las ocurrencias cuyo plazo (*hora + repeticiones + 5 min*) venció sin
+  confirmación y muestra una notificación local (puede llegar hasta ~15 min tarde; antes se pensó una
+  alarma de verificación exacta, que no hizo falta). Distingue entre **"no confirmó"** y
   **"su celular no se ha sincronizado desde las X"** para no generar falsas alarmas.
 - **Límite conocido:** un recordatorio creado con menos de unos 30 min de anticipación puede no llegar a
   tiempo al receptor. La app lo advierte al guardar.
@@ -129,6 +134,11 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
   a sonar, lo que exige el permiso "Mostrar sobre otras apps" (entra en la salud del celular).
   Verificado en el POCO el 2026-11-14: con ese permiso basta, HyperOS no pidió nada más. Si el nivel
   está configurado como banner, `App.kt` no abre la actividad.
+- **Samsung Galaxy A15 (One UI 8.5, Android 16), 2026-11-15:** pasó las pruebas, pero tras reiniciar la
+  alarma sonó con el celular aún cargando (carga 64), la pantalla de Flutter no apareció y no había
+  cómo apagarla. Corregido con la pantalla nativa, el timbre de 1 min y las teclas de volumen (§2).
+- **Nivel Notificación:** usa el mismo motor; si el celular está en silencio o en No molestar, `App.kt`
+  lo calla al empezar y deja un aviso sin sonido.
 - **Riesgo visto en HyperOS:** si el proceso de la app muere varias veces seguidas, el sistema se niega
   a arrancarlo para la siguiente alarma (`proc frequent died`) y esa alarma no suena. Se vio al matar la
   app a la fuerza dos veces en un minuto; falta saber si pasa en uso normal.
@@ -190,7 +200,8 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
   (Keystore) en el celular. El QR lleva un **código de un solo uso**, nunca el token.
 - Autorización centralizada: toda consulta se filtra por `care_link` o pertenencia al grupo, con tests
   específicos contra acceso a datos ajenos (IDOR).
-- BD local cifrada (SQLCipher, llave en Android Keystore), como en hamidani.
+- Datos locales (foto, bandeja, token) en el almacén cifrado de Android (`flutter_secure_storage`, llave en
+  el Keystore) en vez de SQLCipher: con tan pocos datos no hace falta una base. `allowBackup=false`.
 - Límite de intentos en la vinculación, registro de auditoría y mínimo de datos. Desvincular borra de verdad.
 - Retención: confirmaciones 1 año, voz TTS hasta su descarga, grabaciones mientras exista el recordatorio.
 - Respaldo diario de la BD y los audios. La llave de cifrado y el keystore de firma del APK se guardan en
@@ -201,7 +212,8 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
 ## 11. Despliegue
 
 - Monorepo `~/recuerdame/` con `server/`, `app/` y `docs/`, versionado con git.
-- Contenedor `recuerdame` en `127.0.0.1:8791`, con un volumen para la BD y los audios.
+- Contenedor `recuerdame` en `127.0.0.1:8791`, con un volumen para la BD y los audios. **Desplegado el
+  2026-11-15** (detalle en `docs/despliegue.md`).
 - Regla `recuerdame.danihami.xyz` en `/etc/cloudflared/config.yml`, aplicada con el patrón de reversión
   automática de `~/servers/hamidani/` (systemd-run + rollback en 60 s).
 - Authentik: proveedor OAuth2 `recuerdame` + aplicación "Recuérdame" (slug `recuerdame`), **creados el
@@ -209,7 +221,7 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
   `xyz.danihami.recuerdame:/oauth`, scopes `openid profile email offline_access`, flujo de consentimiento
   implícito. Hoy cualquier usuario de Authentik puede entrar; falta el flujo de registro por invitación
   y restringir el acceso a la app. Para deshacer: borrar esos dos objetos en el panel.
-- Cron de respaldo a las 03:45 (después del de hamidani a las 03:30).
+- Cron de respaldo a las 03:45 (después del de hamidani a las 03:30). Activo desde el 2026-11-15.
 - El SDK de Flutter vive en el PC del usuario; en el servidor no se instala. El backend se despliega
   por SSH (`ssh milo@192.168.0.19`).
 
@@ -242,8 +254,9 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
 
 ## 14. Por decidir más adelante (decisiones de negocio)
 
-- Valores por defecto del escalamiento (¿5 min × 3?) y si "Más tarde" tiene un máximo de veces.
-- Quién puede desvincular a un receptor y qué pasa con sus datos.
+- Valores por defecto del escalamiento: hoy 10 min × 3 (el editor permite 5/10/15/30 min y 0–5 veces).
+- Quién gestiona a quién en grupos ("hogar"), que llega en la fase 3.
+- Desvincular (hoy): cualquier gestor de la persona; si no le queda ningún gestor, se borra todo de ella.
 - Textos exactos de las pantallas del adulto mayor.
 - Si se vuelve público: términos, política de privacidad (Ley 1581) y Play Store.
 
