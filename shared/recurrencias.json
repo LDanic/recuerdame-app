@@ -1,0 +1,16 @@
+[
+  {"nombre": "una sola vez", "dtstart": "2026-11-17T08:00:00", "rrule": null, "n": 3, "esperado": ["2026-11-17T08:00:00"]},
+  {"nombre": "diario a las 8, 14 y 20", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=DAILY;BYHOUR=8,14,20", "n": 7, "esperado": ["2026-11-17T08:00:00", "2026-11-17T14:00:00", "2026-11-17T20:00:00", "2026-11-18T08:00:00", "2026-11-18T14:00:00", "2026-11-18T20:00:00", "2026-11-19T08:00:00"]},
+  {"nombre": "cada 8 horas", "dtstart": "2026-11-17T06:00:00", "rrule": "FREQ=HOURLY;INTERVAL=8", "n": 5, "esperado": ["2026-11-17T06:00:00", "2026-11-17T14:00:00", "2026-11-17T22:00:00", "2026-11-18T06:00:00", "2026-11-18T14:00:00"]},
+  {"nombre": "lunes a viernes", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "n": 8, "esperado": ["2026-11-17T08:00:00", "2026-11-18T08:00:00", "2026-11-19T08:00:00", "2026-11-20T08:00:00", "2026-11-23T08:00:00", "2026-11-24T08:00:00", "2026-11-25T08:00:00", "2026-11-26T08:00:00"]},
+  {"nombre": "cada 15 dias", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=DAILY;INTERVAL=15", "n": 5, "esperado": ["2026-11-17T08:00:00", "2026-12-02T08:00:00", "2026-12-17T08:00:00", "2027-01-01T08:00:00", "2027-01-16T08:00:00"]},
+  {"nombre": "cada 2 semanas, martes y sabado", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU,SA", "n": 6, "esperado": ["2026-11-17T08:00:00", "2026-11-21T08:00:00", "2026-12-01T08:00:00", "2026-12-05T08:00:00", "2026-12-15T08:00:00", "2026-12-19T08:00:00"]},
+  {"nombre": "dia 15 de cada mes", "dtstart": "2026-12-15T08:00:00", "rrule": "FREQ=MONTHLY;BYMONTHDAY=15", "n": 4, "esperado": ["2026-12-15T08:00:00", "2027-01-15T08:00:00", "2027-02-15T08:00:00", "2027-03-15T08:00:00"]},
+  {"nombre": "dia 31: salta los meses cortos", "dtstart": "2026-12-31T08:00:00", "rrule": "FREQ=MONTHLY;BYMONTHDAY=31", "n": 5, "esperado": ["2026-12-31T08:00:00", "2027-01-31T08:00:00", "2027-03-31T08:00:00", "2027-05-31T08:00:00", "2027-07-31T08:00:00"]},
+  {"nombre": "primer martes de cada mes", "dtstart": "2026-12-01T09:30:00", "rrule": "FREQ=MONTHLY;BYDAY=1TU", "n": 5, "esperado": ["2026-12-01T09:30:00", "2027-01-05T09:30:00", "2027-02-02T09:30:00", "2027-03-02T09:30:00", "2027-04-06T09:30:00"]},
+  {"nombre": "ultimo viernes de cada mes", "dtstart": "2026-11-27T08:00:00", "rrule": "FREQ=MONTHLY;BYDAY=-1FR", "n": 4, "esperado": ["2026-11-27T08:00:00", "2026-12-25T08:00:00", "2027-01-29T08:00:00", "2027-02-26T08:00:00"]},
+  {"nombre": "anual", "dtstart": "2026-12-24T19:00:00", "rrule": "FREQ=YEARLY", "n": 3, "esperado": ["2026-12-24T19:00:00", "2027-12-24T19:00:00", "2028-12-24T19:00:00"]},
+  {"nombre": "anual el 29 de febrero: solo bisiestos", "dtstart": "2028-02-29T08:00:00", "rrule": "FREQ=YEARLY", "n": 3, "esperado": ["2028-02-29T08:00:00", "2032-02-29T08:00:00", "2036-02-29T08:00:00"]},
+  {"nombre": "termina por cantidad", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=DAILY;COUNT=3", "n": 5, "esperado": ["2026-11-17T08:00:00", "2026-11-18T08:00:00", "2026-11-19T08:00:00"]},
+  {"nombre": "termina por fecha", "dtstart": "2026-11-17T08:00:00", "rrule": "FREQ=WEEKLY;BYDAY=TU;UNTIL=20261208T080000", "n": 6, "esperado": ["2026-11-17T08:00:00", "2026-11-24T08:00:00", "2026-12-01T08:00:00", "2026-12-08T08:00:00"]}
+]

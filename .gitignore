@@ -1,2 +1,4 @@
 spikes/voz/modelos/
 
+.venv/
+__pycache__/

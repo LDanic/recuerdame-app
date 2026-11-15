@@ -36,6 +36,7 @@ infraestructura que el servidor y los celulares.
 | Botones de la alarma | **Entendido** (grande) + **Más tarde** (10 min) + **Escuchar otra vez** |
 | Sin confirmación | Repite (p. ej. cada 5 min, hasta 3 veces) y luego avisa a todos los gestores |
 | Silencio / No molestar | Según el nivel de alerta: **Alarma** (suena en silencio, pantalla completa), **Notificación** (respeta el silencio), **Discreto** (solo aparece en la lista) |
+| Pantalla completa o banner | **Configurable en Ajustes, por nivel de alerta** (decidido el 2026-11-14): cada nivel se abre en pantalla completa o solo como banner cuando el celular está en uso. Por defecto: Alarma = pantalla completa, Notificación = banner. *Supuesto por confirmar:* el ajuste es por receptor y lo cambia su gestor |
 | Push | **No.** Sincronización periódica (ver §5) |
 | Compilación | Todo Flutter en el PC del usuario (código, `analyze`, tests, APK firmado, celulares por USB). El servidor solo corre el backend (actualizado el 2026-11-14 al mudar el trabajo al PC) |
 | Backend | FastAPI + SQLite (WAL), igual que hamidani |
@@ -77,7 +78,7 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
 
 | Entidad | Campos clave | Notas |
 |---|---|---|
-| `person` | id, nombre, `authentik_sub?`, tz (IANA), modo (`simple`/`completo`), `pin_hash?` | El gestor tiene `authentik_sub`; un receptor puro no |
+| `person` | id, nombre, `authentik_sub?`, tz (IANA), modo (`simple`/`completo`), `pin_hash?`, `pantalla_completa` (niveles que abren en grande) | El gestor tiene `authentik_sub`; un receptor puro no |
 | `device` | id, person_id, `token_hash`, versión de la app, marca/modelo, **salud** (JSON), `last_sync_at` | Un token por celular, revocable |
 | `care_link` | manager_id → recipient_id, creado_por, fecha | N:M. Un gestor puede enlazarse a sí mismo |
 | `group` / `group_member` | id, nombre / group_id, person_id | El "hogar" |
@@ -126,7 +127,8 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
 - **Pantalla completa con el celular en uso:** Android solo abre la app sola si el celular está
   bloqueado; desbloqueado muestra un banner. Para abrirla siempre, `App.kt` lanza la actividad al empezar
   a sonar, lo que exige el permiso "Mostrar sobre otras apps" (entra en la salud del celular).
-  *Pendiente de verificar en el POCO*, incluido si HyperOS pide además "ventanas emergentes en segundo plano".
+  Verificado en el POCO el 2026-11-14: con ese permiso basta, HyperOS no pidió nada más. Si el nivel
+  está configurado como banner, `App.kt` no abre la actividad.
 - **Riesgo visto en HyperOS:** si el proceso de la app muere varias veces seguidas, el sistema se niega
   a arrancarlo para la siguiente alarma (`proc frequent died`) y esa alarma no suena. Se vio al matar la
   app a la fuerza dos veces en un minuto; falta saber si pasa en uso normal.
@@ -137,8 +139,10 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
   cada N días o semanas; mensual (día N o "primer martes"); anual.
 - `dtstart` se guarda en **hora local + zona IANA del receptor**: "8:00" es 8:00 donde está el receptor.
 - Se expande en el celular (Dart, para programar) y en el servidor (`python-dateutil`, para verificar y
-  purgar). **Tests de paridad:** un archivo JSON de reglas y ocurrencias esperadas que deben pasar ambas
-  implementaciones.
+  purgar). **Tests de paridad:** `shared/recurrencias.json` tiene reglas y ocurrencias esperadas que
+  deben pasar ambas implementaciones (`app/test/recurrencias_test.dart` y
+  `server/tests/test_recurrencias.py`). Verificado el 2026-11-14: 14 casos idénticos con `rrule` 0.2.18
+  (Dart) y `python-dateutil`. Falta probar la conversión a instante real en zonas con cambio de hora.
 
 ## 8. Voz
 
