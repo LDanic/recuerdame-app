@@ -36,7 +36,7 @@ infraestructura que el servidor y los celulares.
 | Botones de la alarma | **Entendido** (grande) + **Más tarde** (10 min) + **Escuchar otra vez** |
 | Sin confirmación | Repite (p. ej. cada 5 min, hasta 3 veces) y luego avisa a todos los gestores |
 | Silencio / No molestar | Según el nivel de alerta: **Alarma** (suena en silencio, pantalla completa), **Notificación** (respeta el silencio), **Discreto** (solo aparece en la lista) |
-| Pantalla completa o banner | **Configurable en Ajustes, por nivel de alerta** (decidido el 2026-11-14): cada nivel se abre en pantalla completa o solo como banner cuando el celular está en uso. Por defecto: Alarma = pantalla completa, Notificación = banner. *Supuesto por confirmar:* el ajuste es por receptor y lo cambia su gestor |
+| Pantalla completa o banner | **Configurable en Ajustes, por nivel de alerta** (decidido el 2026-11-14): cada nivel se abre en pantalla completa o solo como banner cuando el celular está en uso. Por defecto: Alarma = pantalla completa, Notificación = banner. El ajuste es por persona y lo fija su gestor |
 | Push | **No.** Sincronización periódica (ver §5) |
 | Compilación | Todo Flutter en el PC del usuario (código, `analyze`, tests, APK firmado, celulares por USB). El servidor solo corre el backend (actualizado el 2026-11-14 al mudar el trabajo al PC) |
 | Backend | FastAPI + SQLite (WAL), igual que hamidani |
@@ -204,8 +204,11 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
 - Contenedor `recuerdame` en `127.0.0.1:8791`, con un volumen para la BD y los audios.
 - Regla `recuerdame.danihami.xyz` en `/etc/cloudflared/config.yml`, aplicada con el patrón de reversión
   automática de `~/servers/hamidani/` (systemd-run + rollback en 60 s).
-- Authentik: proveedor OAuth2 + aplicación "Recuérdame" (cliente público, PKCE, redirect
-  `xyz.danihami.recuerdame:/oauth`) y flujo de registro por invitación.
+- Authentik: proveedor OAuth2 `recuerdame` + aplicación "Recuérdame" (slug `recuerdame`), **creados el
+  2026-11-14**: cliente público `recuerdame-app`, PKCE, redirect estricto
+  `xyz.danihami.recuerdame:/oauth`, scopes `openid profile email offline_access`, flujo de consentimiento
+  implícito. Hoy cualquier usuario de Authentik puede entrar; falta el flujo de registro por invitación
+  y restringir el acceso a la app. Para deshacer: borrar esos dos objetos en el panel.
 - Cron de respaldo a las 03:45 (después del de hamidani a las 03:30).
 - El SDK de Flutter vive en el PC del usuario; en el servidor no se instala. El backend se despliega
   por SSH (`ssh milo@192.168.0.19`).
