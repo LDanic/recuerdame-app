@@ -1,4 +1,4 @@
-// SPIKE fase 0(a): Â¿suena la alarma en un celular real (pantalla completa,
+// SPIKE fase 0(a): ¿suena la alarma en un celular real (pantalla completa,
 // en silencio, con la app cerrada, tras reiniciar)? Se reemplaza en la fase 1.
 import 'dart:async';
 
@@ -8,11 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 const _alarmId = 1;
-const _texto = 'Tomar la pastilla de la presiÃ³n (LosartÃ¡n)';
+const _autoSeg = int.fromEnvironment('AUTO_SEG'); // solo pruebas: programa al arrancar
+const _texto = 'Tomar la pastilla de la presión (Losartán)';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Alarm.init();
+  if (_autoSeg > 0 && !await Alarm.isRinging() && await Alarm.getAlarm(_alarmId) == null) {
+    await programar(const Duration(seconds: _autoSeg));
+  }
   runApp(const MaterialApp(home: Inicio()));
 }
 
@@ -24,10 +28,10 @@ Future<void> programar(Duration en) => Alarm.set(
     loopAudio: true,
     vibrate: true,
     androidFullScreenIntent: true,
-    // Volumen fijo y forzado: debe sonar aunque el celular estÃ© en silencio.
+    // Volumen fijo y forzado: debe sonar aunque el celular esté en silencio.
     volumeSettings: const VolumeSettings.fixed(volume: 0.8, volumeEnforced: true),
     notificationSettings: const NotificationSettings(
-      title: 'RecuÃ©rdame',
+      title: 'Recuérdame',
       body: _texto,
       stopButton: 'Entendido',
     ),
@@ -70,7 +74,8 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
     final salud = {
       'Notificaciones': await Permission.notification.isGranted,
       'Alarmas exactas': await Permission.scheduleExactAlarm.isGranted,
-      'Sin ahorro de baterÃ­a': await Permission.ignoreBatteryOptimizations.isGranted,
+      'Sin ahorro de batería': await Permission.ignoreBatteryOptimizations.isGranted,
+      'Mostrar sobre otras apps': await Permission.systemAlertWindow.isGranted,
     };
     final a = await Alarm.getAlarm(_alarmId);
     if (!mounted) return;
@@ -85,6 +90,7 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
       Permission.notification,
       Permission.scheduleExactAlarm,
       Permission.ignoreBatteryOptimizations,
+      Permission.systemAlertWindow,
     ].request();
     await _refrescar();
   }
@@ -104,7 +110,7 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('RecuÃ©rdame Â· prueba de alarma')),
+      appBar: AppBar(title: const Text('Recuérdame · prueba de alarma')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -168,7 +174,7 @@ class PantallaAlarma extends StatelessWidget {
                 child: FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: Colors.green.shade700),
                   onPressed: entendido,
-                  child: const Text('âœ”  ENTENDIDO', style: TextStyle(fontSize: 32)),
+                  child: const Text('✔  ENTENDIDO', style: TextStyle(fontSize: 32)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -176,7 +182,7 @@ class PantallaAlarma extends StatelessWidget {
                 height: 72,
                 child: OutlinedButton(
                   onPressed: masTarde,
-                  child: const Text('â°  MÃ¡s tarde', style: TextStyle(fontSize: 24)),
+                  child: const Text('⏰  Más tarde', style: TextStyle(fontSize: 24)),
                 ),
               ),
             ],

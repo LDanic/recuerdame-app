@@ -31,7 +31,7 @@ infraestructura que el servidor y los celulares.
 | Vinculación del receptor | QR en persona o código de 6 dígitos (10 min, un solo uso). El receptor nunca usa contraseña |
 | Destinatario | Una persona o un grupo ("hogar"). En un grupo, cualquiera marca y queda hecho para todos |
 | Privacidad | Estándar fuerte (ver §10). El servidor sí lee el contenido |
-| Voz desde texto | La genera el servidor (Piper TTS, local). **Se borra del servidor cuando todos los celulares destino confirman la descarga**; se regenera desde el texto si hace falta |
+| Voz desde texto | La genera el servidor (Piper TTS, local) con la voz **Laura suave** (`es_MX-laura-high`, `length_scale=1.1`, `noise_scale=0.5`, `noise_w_scale=0.6`; elegida el 2026-11-14). **Se borra del servidor cuando todos los celulares destino confirman la descarga**; se regenera desde el texto si hace falta |
 | Audio grabado | Se conserva cifrado en el servidor mientras exista el recordatorio; se borra al eliminarlo |
 | Botones de la alarma | **Entendido** (grande) + **Más tarde** (10 min) + **Escuchar otra vez** |
 | Sin confirmación | Repite (p. ej. cada 5 min, hasta 3 veces) y luego avisa a todos los gestores |
@@ -120,8 +120,16 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
   batería, última sincronización y versión de la app. El gestor la ve en verde o rojo.
 - **Guías por marca** con enlaces directos a los ajustes: Xiaomi/HyperOS (autoarranque, batería "sin
   restricciones", fijar en recientes), Samsung (sacar de "apps en suspensión"), Motorola.
-- Fase 0 decide con un spike si basta el paquete `alarm` de pub.dev o si hace falta una pieza nativa
-  en Kotlin (MethodChannel).
+- **Resultado del spike (2026-11-14, POCO X6 5G, HyperOS 3, Android 16):** el paquete `alarm` 5.15 de
+  pub.dev pasó las seis pruebas manuales (app abierta, bloqueado, en silencio, app cerrada, "Más tarde"
+  y tras reiniciar). Se usa ese paquete; no hace falta un motor de alarmas propio.
+- **Pantalla completa con el celular en uso:** Android solo abre la app sola si el celular está
+  bloqueado; desbloqueado muestra un banner. Para abrirla siempre, `App.kt` lanza la actividad al empezar
+  a sonar, lo que exige el permiso "Mostrar sobre otras apps" (entra en la salud del celular).
+  *Pendiente de verificar en el POCO*, incluido si HyperOS pide además "ventanas emergentes en segundo plano".
+- **Riesgo visto en HyperOS:** si el proceso de la app muere varias veces seguidas, el sistema se niega
+  a arrancarlo para la siguiente alarma (`proc frequent died`) y esa alarma no suena. Se vio al matar la
+  app a la fuerza dos veces en un minuto; falta saber si pasa en uso normal.
 
 ## 7. Recurrencias
 
@@ -134,6 +142,8 @@ Cinco principios para que los casos futuros quepan sin construirlos hoy:
 
 ## 8. Voz
 
+- **Licencia de la voz:** Laura (HirCoir) es CC BY-NC 4.0, solo uso no comercial, y no documenta el
+  origen de la voz. Vale para la familia; hay que cambiarla antes de abrir la app al público.
 - **Texto → voz:** Piper TTS en el contenedor, en una cola en proceso (sin servicios extra). El gestor
   escucha la vista previa antes de guardar. El celular descarga el audio por adelantado, así que a la hora
   de sonar no necesita red. Cuando todos los celulares destino confirman la descarga, se borra del servidor.
@@ -225,7 +235,6 @@ Solo en español (es-CO). Respeta la escala de fuente del sistema y TalkBack.
 
 ## 14. Por decidir más adelante (decisiones de negocio)
 
-- Qué voz de Piper usar (tras escuchar las muestras de la fase 0).
 - Valores por defecto del escalamiento (¿5 min × 3?) y si "Más tarde" tiene un máximo de veces.
 - Quién puede desvincular a un receptor y qué pasa con sus datos.
 - Textos exactos de las pantallas del adulto mayor.
