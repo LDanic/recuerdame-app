@@ -2,11 +2,14 @@
 // en silencio, con la app cerrada, tras reiniciar)? Se reemplaza en la fase 1.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:alarm/alarm.dart';
 import 'package:alarm/utils/alarm_set.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_appauth/flutter_appauth.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 
 const _alarmId = 1;
@@ -104,31 +107,65 @@ class _InicioState extends State<Inicio> with WidgetsBindingObserver {
   }
 
   // SPIKE fase 0(c): login del gestor con Authentik (OIDC + PKCE, cliente público).
+  // Usa Auth Tab de Chrome: un Custom Tab normal no devuelve el control a la app
+  // porque Chrome bloquea abrir el esquema propio sin un toque del usuario.
   Future<void> _iniciarSesion() async {
+    const authentik = 'https://auth.danihami.xyz/application/o';
+    const cliente = 'recuerdame-app';
+    const vuelta = 'xyz.danihami.recuerdame:/oauth';
     String sesion;
     try {
-      final r = await const FlutterAppAuth().authorizeAndExchangeCode(
-        AuthorizationTokenRequest(
-          'recuerdame-app',
-          'xyz.danihami.recuerdame:/oauth',
-          discoveryUrl:
-              'https://auth.danihami.xyz/application/o/recuerdame/.well-known/openid-configuration',
-          scopes: ['openid', 'profile', 'email', 'offline_access'],
+      final verificador = _aleatorio();
+      final estado = _aleatorio();
+      final codigo = Uri.parse(
+        await FlutterWebAuth2.authenticate(
+          url: Uri.parse('$authentik/authorize/').replace(
+            queryParameters: {
+              'response_type': 'code',
+              'client_id': cliente,
+              'redirect_uri': vuelta,
+              // Sin `offline_access` a propósito: con ese scope Authentik mete una página de
+              // consentimiento. La sesión larga la dará el token de dispositivo del servidor.
+              'scope': 'openid profile email',
+              'state': estado,
+              'code_challenge': base64Url
+                  .encode(sha256.convert(ascii.encode(verificador)).bytes)
+                  .replaceAll('=', ''),
+              'code_challenge_method': 'S256',
+            },
+          ).toString(),
+          callbackUrlScheme: 'xyz.danihami.recuerdame',
         ),
+      ).queryParameters;
+      if (codigo['state'] != estado) throw StateError('state no coincide');
+      final r = await http.post(
+        Uri.parse('$authentik/token/'),
+        body: {
+          'grant_type': 'authorization_code',
+          'code': codigo['code']!,
+          'redirect_uri': vuelta,
+          'client_id': cliente,
+          'code_verifier': verificador,
+        },
       );
+      if (r.statusCode != 200) throw StateError('token ${r.statusCode}: ${r.body}');
+      final idToken = (jsonDecode(r.body) as Map<String, dynamic>)['id_token'] as String;
       // Solo para mostrar quién entró; la firma del token la valida el servidor.
       final datos =
-          jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(r.idToken!.split('.')[1]))))
+          jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(idToken.split('.')[1]))))
               as Map<String, dynamic>;
       sesion =
           'Sesión: ${datos['preferred_username']} (${datos['name']})\n'
-          'sub: ${(datos['sub'] as String).substring(0, 12)}…\n'
-          'Token de renovación: ${r.refreshToken == null ? 'NO' : 'sí'}';
+          'sub: ${(datos['sub'] as String).substring(0, 12)}…';
     } catch (e) {
       sesion = 'Login falló: $e';
     }
     if (mounted) setState(() => _sesion = sesion);
   }
+
+  static String _aleatorio() => base64Url
+      .encode(List.generate(32, (_) => Random.secure().nextInt(256)))
+      .replaceAll('=', '');
 
   @override
   Widget build(BuildContext context) {
