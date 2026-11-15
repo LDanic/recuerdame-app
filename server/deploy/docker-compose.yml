@@ -13,6 +13,7 @@ services:
       RECUERDAME_LLAVE: /secretos/llave
       RECUERDAME_VOZ: /voz/es_MX-laura-high.onnx
       RECUERDAME_GESTORES: ${RECUERDAME_GESTORES}  # en ~/servers/recuerdame/.env
+      RECUERDAME_JWKS: http://127.0.0.1:9000/application/o/recuerdame/jwks/
     volumes:
       - /home/milo/recuerdame/server:/app:ro
       - /home/milo/recuerdame-data:/data

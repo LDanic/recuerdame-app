@@ -30,6 +30,8 @@ from pydantic import AwareDatetime, BaseModel, Field, NaiveDatetime, model_valid
 from . import db, voz
 
 EMISOR = os.environ.get("RECUERDAME_EMISOR", "https://auth.danihami.xyz/application/o/recuerdame/")
+# Las llaves se leen de Authentik local: Cloudflare rechaza a Python-urllib (error 1010).
+JWKS = os.environ.get("RECUERDAME_JWKS", EMISOR + "jwks/")
 CLIENTE = "recuerdame-app"
 ID = r"^[A-Za-z0-9-]{8,64}$"
 Id = Annotated[str, Field(pattern=ID)]
@@ -170,7 +172,7 @@ class Ingreso(BaseModel):
 
 @cache
 def _jwks() -> jwt.PyJWKClient:
-    return jwt.PyJWKClient(EMISOR + "jwks/")
+    return jwt.PyJWKClient(JWKS)
 
 
 def validar_id_token(token: str) -> dict:
