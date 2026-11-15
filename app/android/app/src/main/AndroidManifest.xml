@@ -6,7 +6,33 @@
     <application
         android:label="Recuérdame"
         android:name=".App"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher">
+        <!-- Pantalla de alarma nativa (AlarmaActivity.kt): el plugin `alarm` la abre por la acción RING. -->
+        <activity
+            android:name=".AlarmaActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="xyz.danihami.recuerdame.alarma"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="com.gdelataillade.alarm.action.RING" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- Autoactualización (ota_update). -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"
